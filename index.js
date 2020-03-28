@@ -12,11 +12,22 @@ const myArgs = process.argv.slice(2);
 const threadId = myArgs[0];
 const startPage = myArgs[1];
 let headFull = myArgs[2];
+
 headFull = !!(headFull);
+let ImgUrlsDone = [];
+
 let downloadImage = async (url) => {
     return new Promise(async (resolve, reject) => {
         if (!url.startsWith("http:")) {
             url = `http:${url}`;
+        }
+
+        if (ImgUrlsDone.includes(url)) {
+            console.log(clc.yellow(`\nDownload Skipped Duplicate: ${url}`));
+            resolve();
+            return;
+        } else {
+            ImgUrlsDone.push(url);
         }
 
         const filePath = path.resolve(imgDir, `${Date.now()}_${Math.floor(Math.random() * 100000) + 10000}.part`)
@@ -132,18 +143,14 @@ let main = async (threadId, pageNumber) => {
         await page.goto(threadUrl);
 
         let imgUrls = [];
-        let quoteImgUrls = [];
-        let difference = [];
         let endOfPages = false;
         while (!endOfPages) {
             pageNumber++;
             console.log(clc.black.bgGreenBright.underline(`Went to page: ${page.url()}`));
             await page.addScriptTag({path: require.resolve('jquery')})
-            quoteimgUrls = await page.$$eval('td div.vb_postbit table img:not(.inlineimg)', quoteImages => quoteImages.map(quoteImage => quoteImage.getAttribute('src')));
             imgUrls = await page.$$eval('td div.vb_postbit img:not(.inlineimg)', imgs => imgs.map(img => img.getAttribute('src')));
-            difference = imgUrls.filter(x => !quoteimgUrls.includes(x)).concat(quoteimgUrls.filter(x => !imgUrls.includes(x)));
-            console.log(clc.black.bgGreenBright.underline(`Found ${(difference.length)} matches`));
-            await asyncForEach(difference, downloadImage);
+            console.log(clc.black.bgGreenBright.underline(`Found ${(imgUrls.length)} matches`));
+            await asyncForEach(imgUrls, downloadImage);
 
             let dirCont = fs.readdirSync(imgDir);
             let files = dirCont.filter(function (elm) {
