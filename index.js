@@ -57,7 +57,13 @@ let downloadImage = async (url) => {
             downloadSuccess = false;
             writer.end();
             let errorCode = null;
-            if (error && typeof error === "object" && error.hasOwnProperty('response') && typeof error.response === "object" && error.response.hasOwnProperty('status')) {
+            if (
+                error &&
+                typeof error === "object" &&
+                error.hasOwnProperty('response') &&
+                typeof error.response === "object" &&
+                error.response.hasOwnProperty('status')
+            ) {
                 errorCode = error.response.status
             }
             if (zeroLength) {
@@ -86,7 +92,9 @@ let downloadImage = async (url) => {
             }
             resolve()
         });
-        writer.on('error', () => {
+        writer.on('error', (error) => {
+            console.log(clc.red(`\nWrite Stream Error: ${url}`));
+            console.log(error)
             reject();
         });
     });
@@ -95,13 +103,18 @@ let downloadImage = async (url) => {
 let nameFilesBasedOnMime = async (file) => {
     file = path.resolve(imgDir, file);
     if (fs.existsSync(file)) {
-        let stream = fs.createReadStream(file);
-        let mimeInfo = await FileType.fromStream(stream);
-        if (!!(mimeInfo) && mimeInfo.hasOwnProperty('ext')) {
-            let newFileBase = file.split('.').slice(0, -1)
-            fs.renameSync(file, `${newFileBase}.${mimeInfo.ext}`);
-        } else {
-            console.log(file);
+        try {
+            let stream = fs.createReadStream(file);
+            let mimeInfo = await FileType.fromStream(stream);
+            if (!!(mimeInfo) && mimeInfo.hasOwnProperty('ext')) {
+                let newFileBase = file.split('.').slice(0, -1)
+                fs.renameSync(file, `${newFileBase}.${mimeInfo.ext}`);
+            } else {
+                console.log(clc.red(`\nNo mime for file: ${file} of url: ${url}`));
+            }
+        } catch(error) {
+            console.log(clc.red(`\nError on mime based rename for file: ${file} of url: ${url}`));
+            console.log(error);
         }
     }
 }
