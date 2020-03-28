@@ -99,7 +99,7 @@ let main = async (threadId, pageNumber) => {
     const browser = await puppeteer.launch({
         headless: !headFull,
         ignoreHTTPSErrors: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     try {
         const page = await browser.newPage();
