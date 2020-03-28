@@ -145,7 +145,7 @@ let main = async (threadId, pageNumber) => {
             }
             console.log(`\nGoing to Page: ${pageNumber}\n`);
             await Promise.all([
-                page.click('div.pagenav a[rel="next"]'),
+                page.click('div.pagenav a[rel="next"]', {waitUntil: 'domcontentloaded'}),
                 page.waitForNavigation({waitUntil: 'networkidle0'}),
             ]);
         }
