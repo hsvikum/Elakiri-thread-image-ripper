@@ -24,22 +24,36 @@ let downloadImage = async (url) => {
 
         let response = null;
         let downloadSuccess = true;
+        let zeroLength = false
         try {
-            response = await axios({
-                url,
-                method: 'GET',
-                responseType: 'stream',
-                timeout: 10000
-            });
+            let retryCount = 10;
+            do {
+                response = await axios({
+                    url,
+                    method: 'GET',
+                    responseType: 'stream',
+                    timeout: 10000
+                });
+                retryCount--;
+            } while (retryCount > 0 && response.length == 0);
+
+            if (response.length == 0) {
+                zeroLength = true;
+                throw Error('Zero Length File');
+            }
             response.data.pipe(writer);
         } catch (error) {
+            downloadSuccess = false;
+            writer.end();
             let errorCode = null;
             if (error && typeof error === "object" && error.hasOwnProperty('response') && typeof error.response === "object" && error.response.hasOwnProperty('status')) {
                 errorCode = error.response.status
             }
-            writer.end();
-            downloadSuccess = false;
-            console.log(clc.yellow(`\nDownload Failed: ${url}`, errorCode));
+            if (zeroLength) {
+                console.log(clc.yellow(`\nDownload Failed: ${url}`, "Zero Length File"));
+            } else {
+                console.log(clc.yellow(`\nDownload Failed: ${url}`, errorCode));
+            }
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
             }
