@@ -110,10 +110,10 @@ let nameFilesBasedOnMime = async (file) => {
                 let newFileBase = file.split('.').slice(0, -1)
                 fs.renameSync(file, `${newFileBase}.${mimeInfo.ext}`);
             } else {
-                console.log(clc.red(`\nNo mime for file: ${file} of url: ${url}`));
+                console.log(clc.red(`\nNo mime for file: ${file}`));
             }
         } catch(error) {
-            console.log(clc.red(`\nError on mime based rename for file: ${file} of url: ${url}`));
+            console.log(clc.red(`\nError on mime based rename for file: ${file}`));
             console.log(error);
         }
     }
