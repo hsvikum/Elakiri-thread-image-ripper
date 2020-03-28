@@ -104,6 +104,17 @@ let main = async (threadId, pageNumber) => {
     try {
         const page = await browser.newPage();
         let threadUrl = "http://www.elakiri.com/forum/showthread.php?t=" + threadId + "&page=" + pageNumber
+
+        await page.setRequestInterception(true);
+        await page.on('request', (req) => {
+            if(req.resourceType() === 'image'){
+                req.abort();
+            }
+            else {
+                req.continue();
+            }
+        });
+        
         await page.goto(threadUrl);
 
         let imgUrls = [];
