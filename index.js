@@ -1,29 +1,29 @@
 const puppeteer = require('puppeteer');
 const clc = require("cli-color");
-const fs = require('fs')  
-const path = require('path')  
+const fs = require('fs')
+const path = require('path')
 const axios = require('axios')
 const FileType = require('file-type');
 
-fs.mkdirSync(path.resolve(__dirname, 'images'), { recursive: true });
+fs.mkdirSync(path.resolve(__dirname, 'images'), {recursive: true});
 const imgDir = path.resolve(__dirname, 'images')
 
 const myArgs = process.argv.slice(2);
-const threadUrl = myArgs[0];
-let headFull = myArgs[1];
+const threadId = myArgs[0];
+const startPage = myArgs[1];
+let headFull = myArgs[2];
 headFull = !!(headFull);
-
 let downloadImage = async (url) => {
     return new Promise(async (resolve, reject) => {
-
         if (!url.startsWith("http:")) {
             url = `http:${url}`;
         }
 
         const filePath = path.resolve(imgDir, `${Date.now()}_${Math.floor(Math.random() * 100000) + 10000}.part`)
         const writer = fs.createWriteStream(filePath)
-    
+
         let response = null;
+        let downloadSuccess = true;
         try {
             response = await axios({
                 url,
@@ -32,19 +32,20 @@ let downloadImage = async (url) => {
                 timeout: 10000
             });
             response.data.pipe(writer);
-        } catch(error) {
+        } catch (error) {
             let errorCode = null;
             if (error && typeof error === "object" && error.hasOwnProperty('response') && typeof error.response === "object" && error.response.hasOwnProperty('status')) {
                 errorCode = error.response.status
             }
             writer.end();
+            downloadSuccess = false;
             console.log(clc.yellow(`\nDownload Failed: ${url}`, errorCode));
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
             }
         }
 
-        writer.on('finish',async () => {
+        writer.on('finish', async () => {
             if (
                 response &&
                 typeof response === "object" &&
@@ -55,7 +56,7 @@ let downloadImage = async (url) => {
                 if (fs.existsSync(filePath)) {
                     fs.unlinkSync(filePath);
                 }
-            } else {
+            } else if(downloadSuccess){
                 console.log(clc.green(`\nDownload Success: ${url}`));
             }
             resolve()
@@ -82,43 +83,56 @@ let nameFilesBasedOnMime = async (file) => {
 
 let delay = (timeout) => {
     return new Promise((resolve) => {
-      setTimeout(resolve, timeout);
+        setTimeout(resolve, timeout);
     });
-  }
+}
 
 let asyncForEach = async (array, callback) => {
-      let parallel = [];
-      for (let index = 0; index < array.length; index++) {
-          parallel.push(callback(array[index], index, array));
-      }
-      await Promise.all(parallel)
-  }
+    let parallel = [];
+    for (let index = 0; index < array.length; index++) {
+        parallel.push(callback(array[index], index, array));
+    }
+    await Promise.all(parallel)
+}
 
-(async function(){
-    const browser = await puppeteer.launch({headless: !headFull, ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox']});
+let main = async (threadId, pageNumber) => {
+    const browser = await puppeteer.launch({
+        headless: !headFull,
+        ignoreHTTPSErrors: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     try {
         const page = await browser.newPage();
+        let threadUrl = "http://www.elakiri.com/forum/showthread.php?t=" + threadId + "&page=" + pageNumber
         await page.goto(threadUrl);
 
         let imgUrls = [];
+        let quoteImgUrls = [];
+        let difference = [];
         let endOfPages = false;
-        while(!endOfPages) {
-            console.log('\n\n');
+        while (!endOfPages) {
+            pageNumber++;
             console.log(clc.black.bgGreenBright.underline(`Went to page: ${page.url()}`));
             await page.addScriptTag({path: require.resolve('jquery')})
+            quoteimgUrls = await page.$$eval('td div.vb_postbit table img:not(.inlineimg)', quoteImages => quoteImages.map(quoteImage => quoteImage.getAttribute('src')));
             imgUrls = await page.$$eval('td div.vb_postbit img:not(.inlineimg)', imgs => imgs.map(img => img.getAttribute('src')));
-            console.log(clc.black.bgGreenBright.underline(`Found ${(imgUrls.length)} matches`));
-            await asyncForEach(imgUrls, downloadImage);
+            difference = imgUrls.filter(x => !quoteimgUrls.includes(x)).concat(quoteimgUrls.filter(x => !imgUrls.includes(x)));
+            console.log(clc.black.bgGreenBright.underline(`Found ${(difference.length)} matches`));
+            await asyncForEach(difference, downloadImage);
 
             let dirCont = fs.readdirSync(imgDir);
-            let files = dirCont.filter(function( elm ) {return elm.match(/.*\.(part)/ig);});
+            let files = dirCont.filter(function (elm) {
+                return elm.match(/.*\.(part)/ig);
+            });
 
             await asyncForEach(files, nameFilesBasedOnMime);
 
             if (await page.$('div.pagenav a[rel="next"]') === null) {
                 endOfPages = true;
+                pageNumber = 0;
                 break;
             }
+            console.log(`\nGoing to Page: ${pageNumber}\n`);
             await Promise.all([
                 page.click('div.pagenav a[rel="next"]'),
                 page.waitForNavigation({waitUntil: 'networkidle0'}),
@@ -126,9 +140,23 @@ let asyncForEach = async (array, callback) => {
         }
 
     } catch (error) {
-        console.error(error);
+        pageNumber++;
+        console.log(clc.black.bgCyanBright(`Skipping to page ${(pageNumber)} due to ${(error.message)}`));
+        console.log('\n');
     } finally {
         await delay(3000);
         await browser.close();
+        return pageNumber;
+    }
+};
+
+(async function() {
+    try {
+        let pgNumber = startPage ? startPage : 1;
+        while (pgNumber > 0) {
+            pgNumber = await main(threadId, pgNumber);
+        }
+    } catch (error) {
+        console.error(error);
     }
 })();
