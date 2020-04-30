@@ -6,6 +6,7 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
+[![Known Vulnerabilities](https://snyk.io/test/github/hsvikum/Elakiri-thread-image-ripper/badge.svg?targetFile=package.json)](https://snyk.io/test/github/hsvikum/Elakiri-thread-image-ripper?targetFile=package.json)
 
 <!-- PROJECT LOGO -->
 <p align="center">
