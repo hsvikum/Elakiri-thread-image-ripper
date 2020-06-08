@@ -161,7 +161,7 @@ let main = async (threadId, pageNumber) => {
             pageNumber++;
             console.log(clc.black.bgGreenBright.underline(`Went to page: ${page.url()}`));
             await page.addScriptTag({path: require.resolve('jquery')})
-            imgUrls = await page.$$eval('article.message-body div.lbContainer img:not(.inlineimg)', imgs => imgs.map(img => img.getAttribute('src')));
+            imgUrls = await page.$$eval('article.message-body img.bbImage', imgs => imgs.map(img => img.getAttribute('src')));
             console.log(clc.black.bgGreenBright.underline(`Found ${(imgUrls.length)} matches`));
             await asyncForEach(imgUrls, downloadImage);
 
