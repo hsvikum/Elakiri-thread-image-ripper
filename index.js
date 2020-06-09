@@ -161,7 +161,7 @@ let main = async (threadId, pageNumber) => {
             pageNumber++;
             console.log(clc.black.bgGreenBright.underline(`Went to page: ${page.url()}`));
             await page.addScriptTag({path: require.resolve('jquery')})
-            imgUrls = await page.$$eval('td div.vb_postbit img:not(.inlineimg)', imgs => imgs.map(img => img.getAttribute('src')));
+            imgUrls = await page.$$eval('article.message-body img.bbImage', imgs => imgs.map(img => img.getAttribute('src')));
             console.log(clc.black.bgGreenBright.underline(`Found ${(imgUrls.length)} matches`));
             await asyncForEach(imgUrls, downloadImage);
 
@@ -172,14 +172,14 @@ let main = async (threadId, pageNumber) => {
 
             await asyncForEach(files, nameFilesBasedOnMime);
 
-            if (await page.$('div.pagenav a[rel="next"]') === null) {
+            if (await page.$('div.pageNav a.pageNav-jump--next') === null) {
                 endOfPages = true;
                 pageNumber = 0;
                 break;
             }
             console.log(`\nGoing to Page: ${pageNumber}\n`);
             await Promise.all([
-                page.click('div.pagenav a[rel="next"]', {waitUntil: 'domcontentloaded'}),
+                page.click('div.pageNav a.pageNav-jump--next', {waitUntil: 'domcontentloaded'}),
                 page.waitForNavigation({waitUntil: 'networkidle0'}),
             ]);
         }
